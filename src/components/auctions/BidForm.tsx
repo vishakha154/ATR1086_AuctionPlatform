@@ -30,7 +30,6 @@ export function BidForm({
   const validCurrentPrice = Number(currentPrice) || 0;
   const minimumBid = validCurrentPrice > 0 ? Math.ceil(validCurrentPrice) + 1 : 1;
 
-  // Update placeholder when current price changes (from socket updates)
   useEffect(() => {
     // If user has entered an amount less than new minimum, clear it
     const currentAmount = parseFloat(amount);
