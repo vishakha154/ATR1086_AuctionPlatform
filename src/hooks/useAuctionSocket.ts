@@ -1,18 +1,17 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Socket } from 'socket.io-client';
-
-interface BidData {
-  auctionId: string;
-  amount: number;
-  bidderName: string;
-  bidderId: string;
-  currentPrice: number;
-  timestamp: string;
-}
+import type {
+  NewBidEvent,
+  AuctionPriceUpdatedEvent,
+  ViewerCountEvent,
+  AuctionEndingSoonEvent,
+  AuctionSoldEvent,
+  AuctionExpiredEvent,
+} from '@/types';
 
 interface UseAuctionSocketReturn {
   currentPrice: number;
-  latestBid: BidData | null;
+  latestBid: NewBidEvent | null;
   viewerCount: number;
   joinAuction: (auctionId: string) => void;
   leaveAuction: (auctionId: string) => void;
@@ -23,7 +22,7 @@ export function useAuctionSocket(
   auctionId: string | null
 ): UseAuctionSocketReturn {
   const [currentPrice, setCurrentPrice] = useState<number>(0);
-  const [latestBid, setLatestBid] = useState<BidData | null>(null);
+  const [latestBid, setLatestBid] = useState<NewBidEvent | null>(null);
   const [viewerCount, setViewerCount] = useState<number>(0);
 
   useEffect(() => {
@@ -36,22 +35,24 @@ export function useAuctionSocket(
     socket.emit('join_auction', { auctionId });
 
     // Listen for new bids
-    const handleNewBid = (data: BidData) => {
-      console.log('🎯 New bid received:', data);
-      setLatestBid(data);
-      setCurrentPrice(data.currentPrice);
-    };
-
-    // Listen for price updates (separate event from NEW_BID)
-    const handlePriceUpdate = (data: { auctionId: string; currentPrice: number }) => {
+    const handleNewBid = (data: NewBidEvent) => {
       if (data.auctionId === auctionId) {
-        console.log('💰 Price updated:', data.currentPrice);
+        console.log('🎯 New bid received:', data);
+        setLatestBid(data);
         setCurrentPrice(data.currentPrice);
       }
     };
 
+    // Listen for price updates (separate event from NEW_BID)
+    const handlePriceUpdate = (data: AuctionPriceUpdatedEvent) => {
+      if (data.auctionId === auctionId) {
+        console.log('💰 Price updated:', data.newPrice);
+        setCurrentPrice(data.newPrice);
+      }
+    };
+
     // Listen for viewer count
-    const handleViewerCount = (data: { auctionId: string; count: number }) => {
+    const handleViewerCount = (data: ViewerCountEvent) => {
       if (data.auctionId === auctionId) {
         console.log('👥 Viewer count updated:', data.count);
         setViewerCount(data.count);
@@ -59,16 +60,23 @@ export function useAuctionSocket(
     };
 
     // Listen for auction ending soon
-    const handleEndingSoon = (data: { auctionId: string; secondsRemaining: number }) => {
+    const handleEndingSoon = (data: AuctionEndingSoonEvent) => {
       if (data.auctionId === auctionId) {
         console.log(`⏰ Auction ending in ${data.secondsRemaining} seconds`);
       }
     };
 
     // Listen for auction sold
-    const handleSold = (data: { auctionId: string; winnerName: string; finalPrice: number }) => {
+    const handleSold = (data: AuctionSoldEvent) => {
       if (data.auctionId === auctionId) {
         console.log(`🏆 Auction sold to ${data.winnerName} for $${data.finalPrice}`);
+      }
+    };
+
+    // Listen for auction expired
+    const handleExpired = (data: AuctionExpiredEvent) => {
+      if (data.auctionId === auctionId) {
+        console.log('⏱️ Auction expired');
       }
     };
 
@@ -78,6 +86,7 @@ export function useAuctionSocket(
     socket.on('VIEWER_COUNT', handleViewerCount);
     socket.on('AUCTION_ENDING_SOON', handleEndingSoon);
     socket.on('AUCTION_SOLD', handleSold);
+    socket.on('AUCTION_EXPIRED', handleExpired);
 
     // Cleanup: leave room and remove listeners
     return () => {
@@ -88,6 +97,7 @@ export function useAuctionSocket(
       socket.off('VIEWER_COUNT', handleViewerCount);
       socket.off('AUCTION_ENDING_SOON', handleEndingSoon);
       socket.off('AUCTION_SOLD', handleSold);
+      socket.off('AUCTION_EXPIRED', handleExpired);
     };
   }, [socket, auctionId]);
 
@@ -113,4 +123,5 @@ export function useAuctionSocket(
     leaveAuction,
   };
 }
+
 

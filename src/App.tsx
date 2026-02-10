@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "../src/contexts/AuthContext";
 import { ThemeProvider } from "../src/contexts/ThemeContext";
 import { Toaster } from "sonner";
+import { Toaster as CustomToaster } from "../src/components/ui/toaster";
 import Index from "./pages/Index";
 import AuthPage from "./pages/Auth";
 import AuctionsPage from "./pages/Auctions";
@@ -17,8 +18,10 @@ import NotFound from "./pages/NotFound";
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 1000 * 60,
+      staleTime: 1000 * 60, // 1 minute
       retry: 1,
+      refetchOnWindowFocus: false, // Prevent refetch on window focus
+      refetchOnMount: true, // Allow refetch on mount if data is stale
     },
   },
 });
@@ -29,6 +32,7 @@ const App = () => (
       <AuthProvider>
         <TooltipProvider>
           <Toaster />
+          <CustomToaster />
           <BrowserRouter>
             <Routes>
               <Route path="/" element={<Index />} />

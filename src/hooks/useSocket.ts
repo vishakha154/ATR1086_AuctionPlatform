@@ -6,6 +6,8 @@ import type {
   AuctionSoldEvent,
   AuctionExpiredEvent,
   ViewerCountEvent,
+  AuctionWonEvent,
+  AuctionPriceUpdatedEvent,
 } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 
@@ -18,9 +20,10 @@ const getSocketUrl = () => {
   }
   
   // If no socket URL, try to derive from API URL
-  const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://192.168.25.78:3000';
-  // Replace port 3000 with 5000 for socket, or use same URL
-  return apiUrl.replace(':3000', ':5000') || 'http://192.168.25.78:5000';
+  // Extract base URL from API_BASE_URL (remove /api/v1 if present)
+  const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api/v1';
+  const baseUrl = apiUrl.replace('/api/v1', '');
+  return baseUrl; // Same port as API, but without /api/v1
 };
 
 const SOCKET_URL = getSocketUrl();
@@ -39,10 +42,12 @@ interface UseSocketOptions {
   onAuctionSold?: (event: AuctionSoldEvent) => void;
   onAuctionExpired?: (event: AuctionExpiredEvent) => void;
   onViewerCount?: (event: ViewerCountEvent) => void;
+  onAuctionWon?: (event: AuctionWonEvent) => void;
+  onAuctionPriceUpdated?: (event: AuctionPriceUpdatedEvent) => void;
 }
 
 export function useSocket(options: UseSocketOptions = {}) {
-  const { auctionId, onNewBid, onAuctionEndingSoon, onAuctionSold, onAuctionExpired, onViewerCount } = options;
+  const { auctionId, onNewBid, onAuctionEndingSoon, onAuctionSold, onAuctionExpired, onViewerCount, onAuctionWon, onAuctionPriceUpdated } = options;
 
   const socketRef = useRef<Socket | null>(null);
   const [status, setStatus] = useState<SocketStatus>('disconnected');
@@ -140,7 +145,23 @@ export function useSocket(options: UseSocketOptions = {}) {
       }
       onViewerCount?.(event);
     });
-  }, [auctionId, onNewBid, onAuctionEndingSoon, onAuctionSold, onAuctionExpired, onViewerCount, toast]);
+
+    socketRef.current.on('AUCTION_WON', (event: AuctionWonEvent) => {
+      console.log('🎉 Auction won:', event);
+      onAuctionWon?.(event);
+      if (event.auctionId === auctionId) {
+        toast({
+          title: 'Congratulations!',
+          description: event.message,
+        });
+      }
+    });
+
+    socketRef.current.on('AUCTION_PRICE_UPDATED', (event: AuctionPriceUpdatedEvent) => {
+      console.log('💰 Auction price updated:', event);
+      onAuctionPriceUpdated?.(event);
+    });
+  }, [auctionId, onNewBid, onAuctionEndingSoon, onAuctionSold, onAuctionExpired, onViewerCount, onAuctionWon, onAuctionPriceUpdated, toast]);
 
   const disconnect = useCallback(() => {
     if (socketRef.current) {

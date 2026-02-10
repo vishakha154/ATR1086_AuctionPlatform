@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { Gavel, Loader2 } from 'lucide-react';
 import { z } from 'zod';
+import type { RegisterCredentials } from '@/types';
 
 const loginSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -30,6 +31,7 @@ export default function AuthPage() {
   const { toast } = useToast();
 
   const [isLoading, setIsLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState('login');
   const [loginForm, setLoginForm] = useState({ email: '', password: '' });
   const [registerForm, setRegisterForm] = useState({ email: '', password: '', confirmPassword: '' });
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -97,8 +99,8 @@ export default function AuthPage() {
 
     setIsLoading(true);
     try {
-      await register({ email: registerForm.email, password: registerForm.password });
-      toast({ title: 'Account created!', description: 'Welcome to LiveBid' });
+      await register({ email: registerForm.email, password: registerForm.password, confirmPassword: registerForm.confirmPassword });
+      toast({ title: 'Account created!', description: 'Welcome! You have been automatically logged in.' });
       navigate('/auctions');
     } catch (error) {
       toast({
@@ -124,7 +126,7 @@ export default function AuthPage() {
           <CardDescription>Real-time auction platform</CardDescription>
         </CardHeader>
         <CardContent>
-          <Tabs defaultValue="login">
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="grid w-full grid-cols-2 mb-6">
               <TabsTrigger value="login">Sign In</TabsTrigger>
               <TabsTrigger value="register">Sign Up</TabsTrigger>
@@ -149,7 +151,7 @@ export default function AuthPage() {
                   <Input
                     id="login-password"
                     type="password"
-                    placeholder="••••••••"
+                    // placeholder="••••••••"
                     value={loginForm.password}
                     onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })}
                     disabled={isLoading}
@@ -182,7 +184,7 @@ export default function AuthPage() {
                   <Input
                     id="register-password"
                     type="password"
-                    placeholder="••••••••"
+                    // placeholder="••••••••"
                     value={registerForm.password}
                     onChange={(e) => setRegisterForm({ ...registerForm, password: e.target.value })}
                     disabled={isLoading}
@@ -194,7 +196,7 @@ export default function AuthPage() {
                   <Input
                     id="register-confirm"
                     type="password"
-                    placeholder="••••••••"
+                    // placeholder="••••••••"
                     value={registerForm.confirmPassword}
                     onChange={(e) => setRegisterForm({ ...registerForm, confirmPassword: e.target.value })}
                     disabled={isLoading}

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
 import { auctionsApi } from '../lib/api';
 import { Layout } from '../components/layout/Layout';
 import { AuctionCard } from '../components/auctions/AuctionCards';
@@ -12,10 +13,20 @@ import { Grid3X3, List, Plus, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { AuctionStatus } from '../types';
 
 export default function AuctionsPage() {
+  const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
   const [page, setPage] = useState(1);
   const [status, setStatus] = useState<AuctionStatus | 'all'>('all');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const limit = 12;
+
+  const handleCreateAuction = () => {
+    if (isAuthenticated) {
+      navigate('/auctions/create');
+    } else {
+      navigate('/auth');
+    }
+  };
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['auctions', page, status],
@@ -37,12 +48,10 @@ export default function AuctionsPage() {
             <h1 className="text-3xl font-bold">Auctions</h1>
             <p className="text-muted-foreground mt-1">Browse and bid on live auctions</p>
           </div>
-          <Link to="/auctions/create">
-            <Button className="gap-2">
-              <Plus className="h-4 w-4" />
-              Create Auction
-            </Button>
-          </Link>
+          <Button className="gap-2" onClick={handleCreateAuction}>
+            <Plus className="h-4 w-4" />
+            Create Auction
+          </Button>
         </div>
 
         {/* Filters */}
@@ -94,9 +103,9 @@ export default function AuctionsPage() {
         ) : data?.items.length === 0 ? (
           <div className="text-center py-12">
             <p className="text-muted-foreground">No auctions found</p>
-            <Link to="/auctions/create">
-              <Button className="mt-4">Create the first auction</Button>
-            </Link>
+            <Button className="mt-4" onClick={handleCreateAuction}>
+              Create the first auction
+            </Button>
           </div>
         ) : (
           <div className={viewMode === 'grid'

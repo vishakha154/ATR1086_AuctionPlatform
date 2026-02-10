@@ -20,9 +20,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const token = localStorage.getItem('token');
-  
+
   // Initialize WebSocket for balance updates
-  const { balance: socketBalance, isConnected: socketConnected } = useWebSocket(token);
+  const { balance: socketBalance, isConnected: socketConnected } = useWebSocket(token, (event) => {
+    // Handle auction won event - could show notification or refresh stats
+    console.log('Auction won:', event);
+  });
 
   const refreshUser = useCallback(async () => {
     const token = localStorage.getItem('token');

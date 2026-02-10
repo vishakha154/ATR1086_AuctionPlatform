@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Navigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { auctionsApi } from '@/lib/api';
@@ -45,11 +45,11 @@ export default function CreateAuctionPage() {
   const [imageError, setImageError] = useState<string>('');
 
 
-// Recommended settings for smaller payload
-const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
-const MAX_IMAGE_WIDTH = 1200; // Reduced from 1920
-const MAX_IMAGE_HEIGHT = 800;  // Reduced from 1080
-const COMPRESSION_QUALITY = 0.6; // Reduced to 60%
+  // Recommended settings for smaller payload
+  const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
+  const MAX_IMAGE_WIDTH = 1200; // Reduced from 1920
+  const MAX_IMAGE_HEIGHT = 800;  // Reduced from 1080
+  const COMPRESSION_QUALITY = 0.6; // Reduced to 60%
 
   // Compress and resize image
   const compressImage = (file: File): Promise<string> => {
@@ -87,11 +87,11 @@ const COMPRESSION_QUALITY = 0.6; // Reduced to 60%
           // Draw and compress image
           ctx.drawImage(img, 0, 0, width, height);
           const compressedDataUrl = canvas.toDataURL('image/jpeg', COMPRESSION_QUALITY);
-          
+
           // Check if compressed size is still too large (should be much smaller)
           const base64Length = compressedDataUrl.length;
           const sizeInMB = (base64Length * 3) / 4 / (1024 * 1024); // Approximate size
-          
+
           if (sizeInMB > 2) { // If still over 2MB after compression
             reject(new Error('Image is too large even after compression. Please use a smaller image.'));
             return;
@@ -146,8 +146,7 @@ const COMPRESSION_QUALITY = 0.6; // Reduced to 60%
   };
 
   if (!isAuthenticated) {
-    navigate('/auth');
-    return null;
+    return <Navigate to="/auth" replace />;
   }
 
   const getEndsAt = (): Date | null => {
@@ -198,8 +197,9 @@ const COMPRESSION_QUALITY = 0.6; // Reduced to 60%
         endsAt: data.endsAt.toISOString(),
       });
       toast({ title: 'Auction created!', description: 'Your auction is now live' });
-      // Invalidate auctions query to refresh the list
+      // Invalidate auctions queries to refresh the lists
       queryClient.invalidateQueries({ queryKey: ['auctions'] });
+      queryClient.invalidateQueries({ queryKey: ['my-auctions'] });
       navigate('/auctions');
     } catch (error) {
       const axiosError = error as AxiosError<ApiError>;
@@ -258,7 +258,7 @@ const COMPRESSION_QUALITY = 0.6; // Reduced to 60%
                   {errors.description && <p className="text-sm text-destructive">{errors.description}</p>}
                 </div>
 
-                <div className="space-y-2">
+                {/* <div className="space-y-2">
                   <Label htmlFor="image">Auction Image (Optional)</Label>
                   <Input
                     id="image"
@@ -275,7 +275,7 @@ const COMPRESSION_QUALITY = 0.6; // Reduced to 60%
                       Image loaded and compressed successfully
                     </p>
                   )}
-                </div>
+                </div> */}
 
                 <div className="space-y-2">
                   <Label htmlFor="price">Starting Price</Label>
@@ -347,7 +347,7 @@ const COMPRESSION_QUALITY = 0.6; // Reduced to 60%
           <div>
             <h3 className="text-lg font-semibold mb-4">Preview</h3>
             <Card>
-                {/* <div className="aspect-video bg-muted flex items-center justify-center rounded-t-lg overflow-hidden">
+              {/* <div className="aspect-video bg-muted flex items-center justify-center rounded-t-lg overflow-hidden">
                   {imagePreview ? (
                     <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
                   ) : (

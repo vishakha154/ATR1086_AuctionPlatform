@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { auctionsApi } from '../lib/api';
@@ -26,11 +26,16 @@ export default function AuctionDetailPage() {
 
   const [localBids, setLocalBids] = useState<Bid[]>([]);
   const [localPrice, setLocalPrice] = useState<number | null>(null);
+  const processedBidsRef = useRef<Set<string>>(new Set()); // Track processed bids to avoid duplicates
+  const refetchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const { data: auction, isLoading, error } = useQuery({
     queryKey: ['auction', id],
     queryFn: () => auctionsApi.getById(id!),
     enabled: !!id,
+    staleTime: 1000 * 30, // 30 seconds - don't refetch too frequently
+    refetchOnWindowFocus: false, // Prevent refetch on window focus
+    refetchOnMount: false, // Only refetch if data is stale
   });
 
 
@@ -54,58 +59,70 @@ export default function AuctionDetailPage() {
 
   // Get token for WebSocket
   const token = localStorage.getItem('token');
-  
+
   // Initialize WebSocket connection
   const { socket, balance: socketBalance, isConnected: socketConnected, error: socketError } = useWebSocket(token);
-  
+
   // Use auction-specific socket hooks
   const { currentPrice: socketPrice, latestBid, viewerCount } = useAuctionSocket(socket, id || null);
 
   // Handle new bid from socket
   useEffect(() => {
-    if (latestBid && latestBid.auctionId === id) {
-      // Update local price immediately
-      setLocalPrice(latestBid.currentPrice);
-      
-      // Add new bid to local bids list
-      const newBid: Bid = {
-        id: `temp-${Date.now()}`,
-        amount: latestBid.amount,
-        bidderId: latestBid.bidderId,
-        bidder: { 
-          id: latestBid.bidderId, 
-          email: latestBid.bidderName, 
-          balance: 0, 
-          createdAt: '' 
-        },
-        auctionItemId: id!,
-        createdAt: latestBid.timestamp,
-      };
-      
-      setLocalBids((prev) => {
-        const exists = prev.some(
-          (bid) => bid.amount === latestBid.amount && bid.createdAt === latestBid.timestamp
-        );
-        if (exists) return prev;
-        return [newBid, ...prev];
-      });
-      
-      // Invalidate queries to fetch latest data
-      queryClient.invalidateQueries({ queryKey: ['auction', id] });
-      
-      // Show toast if user was outbid
-      const userWasHighestBidder = user && auction?.bids?.[0]?.bidderId === user.id;
-      const isNotOwnBid = latestBid.bidderId !== user?.id;
-      
-      if (userWasHighestBidder && isNotOwnBid) {
-        toast({
-          title: "You've been outbid!",
-          description: `Someone placed a bid of $${latestBid.amount.toLocaleString()}`,
-          variant: 'destructive',
-        });
-      }
+    if (!latestBid || latestBid.auctionId !== id) return;
+
+    // Create a unique key for this bid to avoid processing duplicates
+    const bidKey = `${latestBid.bidderId}-${latestBid.amount}-${latestBid.timestamp}`;
+    if (processedBidsRef.current.has(bidKey)) {
+      return; // Already processed this bid
     }
-  }, [latestBid, id, user, auction, toast, queryClient]);
+    processedBidsRef.current.add(bidKey);
+
+    // Update local price immediately
+    setLocalPrice(latestBid.currentPrice);
+
+    // Add new bid to local bids list
+    const newBid: Bid = {
+      id: `temp-${Date.now()}`,
+      amount: latestBid.amount,
+      bidderId: latestBid.bidderId,
+      bidder: {
+        id: latestBid.bidderId,
+        email: latestBid.bidderName,
+        balance: 0,
+        createdAt: ''
+      },
+      auctionItemId: id!,
+      createdAt: latestBid.timestamp,
+    };
+
+    setLocalBids((prev) => {
+      const exists = prev.some(
+        (bid) => bid.amount === latestBid.amount && bid.createdAt === latestBid.timestamp
+      );
+      if (exists) return prev;
+      return [newBid, ...prev];
+    });
+
+    // Debounce query invalidation - clear existing timeout and set new one
+    if (refetchTimeoutRef.current) {
+      clearTimeout(refetchTimeoutRef.current);
+    }
+    refetchTimeoutRef.current = setTimeout(() => {
+      queryClient.invalidateQueries({ queryKey: ['auction', id] });
+      refetchTimeoutRef.current = null;
+    }, 2000); // Wait 2 seconds before refetching to batch multiple rapid bids
+
+    // Show toast if user was outbid (check against current auction data)
+    const isNotOwnBid = latestBid.bidderId !== user?.id;
+    const auctionData = queryClient.getQueryData<AuctionItem>(['auction', id]);
+    if (isNotOwnBid && auctionData?.bids?.[0]?.bidderId === user?.id) {
+      toast({
+        title: "You've been outbid!",
+        description: `Someone placed a bid of $${latestBid.amount.toLocaleString()}`,
+        variant: 'destructive',
+      });
+    }
+  }, [latestBid, id, user, toast, queryClient]);
 
   // Update price from socket
   useEffect(() => {
@@ -124,6 +141,16 @@ export default function AuctionDetailPage() {
       auctionId: id,
     });
   }, [socketConnected, viewerCount, socketPrice, socketError, id]);
+
+  // Cleanup refs when auction ID changes
+  useEffect(() => {
+    return () => {
+      processedBidsRef.current.clear();
+      if (refetchTimeoutRef.current) {
+        clearTimeout(refetchTimeoutRef.current);
+      }
+    };
+  }, [id]);
 
   // Use socket price if available, otherwise fall back to local or auction price
   const currentPrice = socketPrice || localPrice || parseFloat(auction?.currentPrice || '0') || 0;
@@ -182,14 +209,14 @@ export default function AuctionDetailPage() {
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Auctions
           </Button>
-            <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4">
             {viewerCount > 0 && (
               <div className="flex items-center gap-1 text-sm text-muted-foreground">
                 <Users className="h-4 w-4" />
                 {viewerCount} watching
               </div>
             )}
-            <div className="flex items-center gap-1 text-sm">
+            {/* <div className="flex items-center gap-1 text-sm">
               {socketConnected ? (
                 <>
                   <Wifi className="h-4 w-4 text-green-500" />
@@ -201,7 +228,7 @@ export default function AuctionDetailPage() {
                   <span className="text-muted-foreground">Disconnected</span>
                 </>
               )}
-            </div>
+            </div> */}
             {socketError && (
               <div className="text-xs text-destructive">
                 {socketError}
@@ -214,10 +241,14 @@ export default function AuctionDetailPage() {
           {/* Main content */}
           <div className="lg:col-span-2 space-y-6">
             {/* Image */}
-            <div className="aspect-video bg-muted rounded-lg flex items-center justify-center relative">
-              <ImageIcon className="h-16 w-16 text-muted-foreground" />
-              <Badge className={`absolute top-4 right-4 ${isEnding ? 'bg-status-ending text-white animate-pulse' : status.className}`}>
-                {isEnding ? 'Ending Soon!' : status.label}
+            <div className="aspect-video bg-muted rounded-lg flex items-center justify-center relative overflow-hidden">
+              <img
+                src="https://images.unsplash.com/photo-1550751827-4bd374c3f58b?q=80&w=2070&auto=format&fit=crop"
+                alt={auction.title}
+                className="w-full h-full object-cover"
+              />
+              <Badge className={`absolute top-4 right-4 ${isEnding ? 'bg-status-ending text-white animate-pulse' : status?.className}`}>
+                {isEnding ? 'Ending Soon!' : status?.label}
               </Badge>
             </div>
 
@@ -273,36 +304,30 @@ export default function AuctionDetailPage() {
                     ${currentPrice.toLocaleString()}
                   </p>
                   <p className="text-sm text-muted-foreground mt-1">
-                    Starting: ${auction.startingPrice.toLocaleString()}
+                    Starting: ${auction?.startingPrice?.toLocaleString()}
                   </p>
                 </div>
 
-                {auction.status === 'active' && (
-                  <>
-                    <div className="border-t pt-4">
-                      <p className="text-sm text-muted-foreground mb-2">Time Remaining</p>
-                      <AuctionCountdown endsAt={auction.endsAt} />
-                    </div>
+                {(auction.status === 'active' || auction.status === 'draft') && (
+                  <div className="border-t pt-4">
+                    <p className="text-sm text-muted-foreground mb-2">Time Remaining</p>
+                    <AuctionCountdown endsAt={auction.endsAt} />
+                  </div>
+                )}
 
-                    <div className="border-t pt-4">
-                      {isAuthenticated ? (
-                        <BidForm
-                          auctionId={auction.id}
-                          currentPrice={Number(currentPrice)}
-                          onBidPlaced={() => {
-                            queryClient.invalidateQueries({ queryKey: ['auction', id] });
-                          }}
-                        />
-                      ) : (
-                        <div className="text-center">
-                          <p className="text-muted-foreground mb-3">Sign in to place a bid</p>
-                          <Button onClick={() => navigate('/auth')} className="w-full">
-                            Sign In
-                          </Button>
-                        </div>
-                      )}
-                    </div>
-                  </>
+                {id && (
+                  <div className="border-t pt-4">
+                    <BidForm
+                      auctionId={id}
+                      currentPrice={Number(currentPrice) || parseFloat(auction.currentPrice) || parseFloat(auction.startingPrice) || 0}
+                      isCreator={user?.id === auction.creatorId}
+                      isHighestBidder={allBids.length > 0 && allBids[0].bidderId === user?.id}
+                      onBidPlaced={() => {
+                        // Use refetch instead of invalidate to avoid multiple calls
+                        queryClient.refetchQueries({ queryKey: ['auction', id] });
+                      }}
+                    />
+                  </div>
                 )}
 
                 {auction.status === 'expired' && (

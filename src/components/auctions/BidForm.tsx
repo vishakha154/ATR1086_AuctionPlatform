@@ -5,19 +5,30 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
+import { AxiosError } from 'axios';
 
 interface BidFormProps {
   auctionId: string;
   currentPrice: number;
   onBidPlaced?: () => void;
+  isCreator?: boolean;
+  isHighestBidder?: boolean;
 }
 
-export function BidForm({ auctionId, currentPrice, onBidPlaced }: BidFormProps) {
+export function BidForm({
+  auctionId,
+  currentPrice,
+  onBidPlaced,
+  isCreator = false,
+  isHighestBidder = false
+}: BidFormProps) {
   const [amount, setAmount] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
-  const minimumBid = currentPrice + 1;
+  // Ensure currentPrice is a valid number, default to 0 if invalid
+  const validCurrentPrice = Number(currentPrice) || 0;
+  const minimumBid = validCurrentPrice > 0 ? Math.ceil(validCurrentPrice) + 1 : 1;
 
   // Update placeholder when current price changes (from socket updates)
   useEffect(() => {
@@ -26,10 +37,12 @@ export function BidForm({ auctionId, currentPrice, onBidPlaced }: BidFormProps) 
     if (amount && !isNaN(currentAmount) && currentAmount < minimumBid) {
       setAmount('');
     }
-  }, [minimumBid, amount]);
+  }, [minimumBid]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (isCreator || isHighestBidder) return;
 
     const bidAmount = parseFloat(amount);
     if (isNaN(bidAmount) || bidAmount < minimumBid) {
@@ -43,24 +56,39 @@ export function BidForm({ auctionId, currentPrice, onBidPlaced }: BidFormProps) 
 
     setIsLoading(true);
     try {
-      await auctionsApi.placeBid(auctionId, { amount: bidAmount });
+      const response = await auctionsApi.placeBid(auctionId, { amount: bidAmount });
       toast({
         title: 'Bid placed!',
-        description: `Your bid of $${bidAmount.toLocaleString()} has been placed`,
+        description: response.message,
       });
       setAmount('');
       onBidPlaced?.();
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to place bid';
+      // Extract error message from API response
+      let errorMessage = 'Failed to place bid';
+      if (error instanceof AxiosError && error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error instanceof Error) {
+        errorMessage = error.message;
+      }
       toast({
         title: 'Bid failed',
-        description: message,
+        description: errorMessage,
         variant: 'destructive',
       });
     } finally {
       setIsLoading(false);
     }
   };
+
+  const getButtonText = () => {
+    if (isLoading) return 'Placing Bid...';
+    if (isCreator) return 'Your Auction';
+    if (isHighestBidder) return 'Highest Bidder';
+    return 'Place Bid';
+  };
+
+  const isButtonDisabled = isLoading || isCreator || isHighestBidder;
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -73,20 +101,22 @@ export function BidForm({ auctionId, currentPrice, onBidPlaced }: BidFormProps) 
             type="number"
             step="0.01"
             min={minimumBid}
-            placeholder={minimumBid.toString()}
+            // placeholder={minimumBid.toString()}
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
             className="pl-7"
-            disabled={isLoading}
+            disabled={isButtonDisabled}
           />
         </div>
-        <p className="text-xs text-muted-foreground">
-          Minimum bid: ${minimumBid.toLocaleString()}
-        </p>
+        {!isCreator && !isHighestBidder && (
+          <p className="text-xs text-muted-foreground">
+            Minimum bid: ${minimumBid.toLocaleString()}
+          </p>
+        )}
       </div>
-      <Button type="submit" className="w-full" disabled={isLoading}>
+      <Button type="submit" className="w-full" disabled={isButtonDisabled}>
         {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-        Place Bid
+        {getButtonText()}
       </Button>
     </form>
   );

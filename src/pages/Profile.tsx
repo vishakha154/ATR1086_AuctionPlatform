@@ -22,12 +22,35 @@ export default function ProfilePage() {
     queryKey: ['profile'],
     queryFn: usersApi.getMe,
     enabled: isAuthenticated,
+    refetchOnWindowFocus: false,
+    staleTime: 1000 * 60 * 5, // 5 minutes
   });
 
-  const { data: myAuctions, isLoading: auctionsLoading } = useQuery({
-    queryKey: ['my-auctions'],
-    queryFn: () => auctionsApi.list({ limit: 50 }),
+  const { data: stats, isLoading: statsLoading } = useQuery({
+    queryKey: ['profile-stats'],
+    queryFn: usersApi.getStatistics,
     enabled: isAuthenticated,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  });
+
+  const { data: wonAuctionsData, isLoading: wonLoading } = useQuery({
+    queryKey: ['won-auctions'],
+    queryFn: usersApi.getWonAuctions,
+    enabled: isAuthenticated,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  });
+
+  const { data: myAuctionsData, isLoading: myAuctionsLoading } = useQuery({
+    queryKey: ['my-auctions'],
+    queryFn: () => auctionsApi.myAuctions({ limit: 50 }),
+    enabled: isAuthenticated,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    staleTime: 1000 * 60 * 5, // 5 minutes
   });
 
   if (authLoading) {
@@ -46,9 +69,10 @@ export default function ProfilePage() {
     return <Navigate to="/auth" replace />;
   }
 
-  const isLoading = profileLoading || auctionsLoading;
-  const wonAuctions = profile?.wonAuctions ?? [];
-  const createdAuctions = myAuctions?.items.filter((a: AuctionItem) => a.creatorId === user?.id) ?? [];
+  const isLoading = profileLoading || statsLoading || wonLoading || myAuctionsLoading;
+  // Extract auctions from wins array (new API format)
+  const wonAuctions = wonAuctionsData?.wins?.map(win => win.auction) ?? [];
+  const createdAuctions = myAuctionsData?.items ?? [];
 
   return (
     <Layout>
@@ -77,9 +101,9 @@ export default function ProfilePage() {
               <div>
                 <p className="text-sm text-muted-foreground">Balance</p>
                 {isLoading ? (
-                  <Skeleton className="h-7 w-24 mt-1" />
+                   <Skeleton className="h-7 w-24 mt-1" />
                 ) : (
-                  <p className="text-2xl font-bold">${profile?.balance?.toLocaleString() ?? '0'}</p>
+                  <p className="text-2xl font-bold">${stats?.statistics?.balance?.toLocaleString() ?? profile?.balance?.toLocaleString() ?? '0'}</p>
                 )}
               </div>
             </CardContent>
@@ -95,7 +119,7 @@ export default function ProfilePage() {
                 {isLoading ? (
                   <Skeleton className="h-7 w-12 mt-1" />
                 ) : (
-                  <p className="text-2xl font-bold">{wonAuctions.length}</p>
+                  <p className="text-2xl font-bold">{stats?.statistics?.auctionsWon ?? wonAuctions.length}</p>
                 )}
               </div>
             </CardContent>
@@ -111,7 +135,7 @@ export default function ProfilePage() {
                 {isLoading ? (
                   <Skeleton className="h-7 w-12 mt-1" />
                 ) : (
-                  <p className="text-2xl font-bold">{createdAuctions.length}</p>
+                  <p className="text-2xl font-bold">{stats?.statistics?.auctionsCreated ?? createdAuctions.length}</p>
                 )}
               </div>
             </CardContent>

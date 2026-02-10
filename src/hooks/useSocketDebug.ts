@@ -6,6 +6,8 @@ import type {
   AuctionSoldEvent,
   AuctionExpiredEvent,
   ViewerCountEvent,
+  AuctionWonEvent,
+  AuctionPriceUpdatedEvent,
 } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 
@@ -17,9 +19,10 @@ const getSocketUrl = () => {
     return socketUrl;
   }
   
-  // Use same port as API (backend socket is on port 3000)
-  const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://192.168.25.78:3000';
-  return apiUrl; // Same port as API
+  // Extract base URL from API_BASE_URL (remove /api/v1 if present)
+  const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api/v1';
+  const baseUrl = apiUrl.replace('/api/v1', '');
+  return baseUrl; // Same port as API, but without /api/v1
 };
 
 const SOCKET_URL = getSocketUrl();
@@ -33,6 +36,8 @@ interface UseSocketDebugOptions {
   onAuctionSold?: (event: AuctionSoldEvent) => void;
   onAuctionExpired?: (event: AuctionExpiredEvent) => void;
   onViewerCount?: (event: ViewerCountEvent) => void;
+  onAuctionWon?: (event: AuctionWonEvent) => void;
+  onAuctionPriceUpdated?: (event: AuctionPriceUpdatedEvent) => void;
   debug?: boolean; // Enable debug mode
 }
 
@@ -58,6 +63,8 @@ export function useSocketDebug(options: UseSocketDebugOptions = {}) {
     onAuctionSold, 
     onAuctionExpired, 
     onViewerCount,
+    onAuctionWon,
+    onAuctionPriceUpdated,
     debug = true // Enable debug by default
   } = options;
 
@@ -273,6 +280,34 @@ export function useSocketDebug(options: UseSocketDebugOptions = {}) {
         onViewerCount?.(event);
       });
 
+      socketRef.current.on('AUCTION_WON', (event: AuctionWonEvent) => {
+        if (debug) {
+          log('🎉 AUCTION_WON event received!', {
+            auctionId: event.auctionId,
+            message: event.message,
+            auctionTitle: event.auctionTitle,
+            finalPrice: event.finalPrice,
+          });
+        }
+        onAuctionWon?.(event);
+        if (event.auctionId === auctionId) {
+          toast({
+            title: 'Congratulations!',
+            description: event.message,
+          });
+        }
+      });
+
+      socketRef.current.on('AUCTION_PRICE_UPDATED', (event: AuctionPriceUpdatedEvent) => {
+        if (debug) {
+          log('💰 AUCTION_PRICE_UPDATED event received!', {
+            auctionId: event.auctionId,
+            newPrice: event.newPrice,
+          });
+        }
+        onAuctionPriceUpdated?.(event);
+      });
+
       // Log all events (for debugging)
       if (debug) {
         socketRef.current.onAny((eventName, ...args) => {
@@ -286,7 +321,7 @@ export function useSocketDebug(options: UseSocketDebugOptions = {}) {
       }
       setStatus('disconnected');
     }
-  }, [auctionId, onNewBid, onAuctionEndingSoon, onAuctionSold, onAuctionExpired, onViewerCount, toast, debug, connectionAttempts]);
+  }, [auctionId, onNewBid, onAuctionEndingSoon, onAuctionSold, onAuctionExpired, onViewerCount, onAuctionWon, onAuctionPriceUpdated, toast, debug, connectionAttempts]);
 
   const disconnect = useCallback(() => {
     if (socketRef.current) {

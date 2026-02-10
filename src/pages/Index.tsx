@@ -88,12 +88,20 @@ export default function Index() {
           <p className="text-muted-foreground mb-8 max-w-xl mx-auto">
             Join thousands of users already using LiveBid to buy and sell through live auctions.
           </p>
-          <Link to={isAuthenticated ? '/auctions/create' : '/auth'}>
-            <Button size="lg" className="gap-2">
-              {isAuthenticated ? 'Create Your First Auction' : 'Sign Up Now'}
-              <ArrowRight className="h-4 w-4" />
-            </Button>
-          </Link>
+            <Button 
+            size="lg" 
+            className="gap-2"
+            onClick={() => {
+              if (isAuthenticated) {
+                navigate('/auctions/create');
+              } else {
+                navigate('/auth');
+              }
+            }}
+          >
+            Create Your First Auction
+            <ArrowRight className="h-4 w-4" />
+          </Button>
         </div>
       </section>
     </Layout>
