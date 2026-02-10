@@ -1,0 +1,163 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* LiveBid Design System - Professional & Clean Auction Platform
+   Navy blue primary, subtle grays, gold accents for winning bids
+   All colors in HSL format */
+
+@layer base {
+  :root {
+    --background: 210 20% 98%;
+    --foreground: 220 30% 15%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 220 30% 15%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 30% 15%;
+
+    --primary: 220 60% 35%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 215 25% 92%;
+    --secondary-foreground: 220 30% 15%;
+
+    --muted: 215 20% 94%;
+    --muted-foreground: 215 15% 45%;
+
+    --accent: 215 25% 92%;
+    --accent-foreground: 220 30% 15%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 215 20% 88%;
+    --input: 215 20% 88%;
+    --ring: 220 60% 35%;
+
+    --radius: 0.5rem;
+
+    /* Auction-specific tokens */
+    --success: 142 70% 40%;
+    --success-foreground: 0 0% 100%;
+    
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+    
+    --gold: 43 90% 55%;
+    --gold-foreground: 30 50% 15%;
+
+    /* Status colors */
+    --status-active: 142 70% 40%;
+    --status-ending: 38 92% 50%;
+    --status-sold: 220 60% 35%;
+    --status-expired: 215 15% 55%;
+
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+
+  .dark {
+    --background: 220 25% 8%;
+    --foreground: 210 20% 95%;
+
+    --card: 220 25% 12%;
+    --card-foreground: 210 20% 95%;
+
+    --popover: 220 25% 12%;
+    --popover-foreground: 210 20% 95%;
+
+    --primary: 215 65% 55%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 220 25% 18%;
+    --secondary-foreground: 210 20% 95%;
+
+    --muted: 220 25% 18%;
+    --muted-foreground: 215 15% 60%;
+
+    --accent: 220 25% 18%;
+    --accent-foreground: 210 20% 95%;
+
+    --destructive: 0 62% 45%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 220 25% 20%;
+    --input: 220 25% 20%;
+    --ring: 215 65% 55%;
+
+    /* Auction-specific tokens - dark mode */
+    --success: 142 65% 45%;
+    --success-foreground: 0 0% 100%;
+    
+    --warning: 38 90% 55%;
+    --warning-foreground: 0 0% 10%;
+    
+    --gold: 43 88% 58%;
+    --gold-foreground: 30 50% 10%;
+
+    /* Status colors - dark mode */
+    --status-active: 142 65% 45%;
+    --status-ending: 38 90% 55%;
+    --status-sold: 215 65% 55%;
+    --status-expired: 215 15% 50%;
+
+    --sidebar-background: 220 25% 10%;
+    --sidebar-foreground: 210 20% 90%;
+    --sidebar-primary: 215 65% 55%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 25% 15%;
+    --sidebar-accent-foreground: 210 20% 90%;
+    --sidebar-border: 220 25% 18%;
+    --sidebar-ring: 215 65% 55%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+  }
+}
+
+@layer utilities {
+  .animate-price-update {
+    animation: price-pulse 0.6s ease-out;
+  }
+
+  @keyframes price-pulse {
+    0% {
+      transform: scale(1);
+    }
+    50% {
+      transform: scale(1.05);
+      color: hsl(var(--success));
+    }
+    100% {
+      transform: scale(1);
+    }
+  }
+
+  .animate-bid-flash {
+    animation: bid-flash 0.4s ease-out;
+  }
+
+  @keyframes bid-flash {
+    0% {
+      background-color: hsl(var(--success) / 0.2);
+    }
+    100% {
+      background-color: transparent;
+    }
+  }
+}
