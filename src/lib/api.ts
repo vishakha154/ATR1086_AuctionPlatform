@@ -74,8 +74,8 @@ export const authApi = {
     return data;
   },
 
-  verifyOtp: async (credentials: VerifyOtpCredentials): Promise<{ message: string }> => {
-    const { data } = await api.post<{ message: string }>('/auth/verify-otp', credentials);
+  verifyOtp: async (credentials: VerifyOtpCredentials): Promise<{ message: string; verified: boolean; resetToken: string }> => {
+    const { data } = await api.post<{ message: string; verified: boolean; resetToken: string }>('/auth/verify-otp', credentials);
     return data;
   },
 

@@ -37,7 +37,7 @@ const verifyOtpSchema = z.object({
 
 const resetPasswordSchema = z.object({
   email: z.string().email('Invalid email address'),
-  otp: z.string().length(6, 'OTP must be 6 digits'),
+  resetToken: z.string().min(1, 'Reset token is required'),
   newPassword: z.string().min(6, 'Password must be at least 6 characters'),
   confirmPassword: z.string(),
 }).refine((data) => data.newPassword === data.confirmPassword, {
@@ -59,7 +59,8 @@ export default function AuthPage() {
     email: '',
     otp: '',
     newPassword: '',
-    confirmPassword: ''
+    confirmPassword: '',
+    resetToken: ''
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -184,7 +185,9 @@ export default function AuthPage() {
 
     setIsLoading(true);
     try {
-      await authApi.verifyOtp({ email: forgotPasswordForm.email, otp: forgotPasswordForm.otp });
+      const response = await authApi.verifyOtp({ email: forgotPasswordForm.email, otp: forgotPasswordForm.otp });
+      // Store the resetToken from the response
+      setForgotPasswordForm({ ...forgotPasswordForm, resetToken: response.resetToken });
       toast({ title: 'OTP Verified', description: 'Now you can reset your password.' });
       setForgotPasswordView('reset');
     } catch (error) {
@@ -201,7 +204,12 @@ export default function AuthPage() {
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrors({});
-    const result = resetPasswordSchema.safeParse(forgotPasswordForm);
+    const result = resetPasswordSchema.safeParse({
+      email: forgotPasswordForm.email,
+      resetToken: forgotPasswordForm.resetToken,
+      newPassword: forgotPasswordForm.newPassword,
+      confirmPassword: forgotPasswordForm.confirmPassword
+    });
     if (!result.success) {
       const fieldErrors: Record<string, string> = {};
       result.error.errors.forEach((err) => {
@@ -213,7 +221,12 @@ export default function AuthPage() {
 
     setIsLoading(true);
     try {
-      await authApi.resetPassword(forgotPasswordForm);
+      await authApi.resetPassword({
+        email: forgotPasswordForm.email,
+        resetToken: forgotPasswordForm.resetToken,
+        newPassword: forgotPasswordForm.newPassword,
+        confirmPassword: forgotPasswordForm.confirmPassword
+      });
       toast({ title: 'Success', description: 'Password reset successfully. You can now login.' });
       setForgotPasswordView('login');
     } catch (error) {

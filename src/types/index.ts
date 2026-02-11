@@ -33,7 +33,7 @@ export interface VerifyOtpCredentials {
 
 export interface ResetPasswordCredentials {
   email: string;
-  otp: string;
+  resetToken: string;
   newPassword: string;
   confirmPassword: string;
 }
