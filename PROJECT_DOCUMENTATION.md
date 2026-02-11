@@ -106,9 +106,12 @@ frontend/
 
 Required `.env` variables for the frontend:
 ```env
-VITE_API_BASE_URL=http://<api-host>:3000/api/v1
-VITE_SOCKET_URL=http://<api-host>:5000
+VITE_API_BASE_URL=http://172.16.15.181:3000/api/v1
+VITE_SOCKET_URL=http://172.16.15.181:5000
 ```
+
+> [!IMPORTANT]
+> When deploying to **Vercel**, make sure to set these variables in the **Vercel Dashboard** (Settings -> Environment Variables). The codebase is configured to fallback to `localhost` in development but requires these for production.
 
 ---
 
