@@ -22,6 +22,22 @@ export interface RegisterCredentials {
   confirmPassword: string;
 }
 
+export interface ForgotPasswordCredentials {
+  email: string;
+}
+
+export interface VerifyOtpCredentials {
+  email: string;
+  otp: string;
+}
+
+export interface ResetPasswordCredentials {
+  email: string;
+  otp: string;
+  newPassword: string;
+  confirmPassword: string;
+}
+
 export interface UserStatistics {
   balance: number;
   auctionsWon: number;

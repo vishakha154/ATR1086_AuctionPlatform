@@ -17,9 +17,12 @@ import type {
   MyAuctionsResponse,
   WonAuctionsResponse,
   WinHistoryResponse,
+  ForgotPasswordCredentials,
+  VerifyOtpCredentials,
+  ResetPasswordCredentials,
 } from '@/types';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://192.168.25.78:3000/api/v1';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://172.16.15.181:3000/api/v1';
 
 // Create axios instance
 const api: AxiosInstance = axios.create({
@@ -63,6 +66,21 @@ export const authApi = {
 
   register: async (credentials: RegisterCredentials): Promise<AuthResponse> => {
     const { data } = await api.post<AuthResponse>('/auth/register', credentials);
+    return data;
+  },
+
+  forgotPassword: async (credentials: ForgotPasswordCredentials): Promise<{ message: string }> => {
+    const { data } = await api.post<{ message: string }>('/auth/forgot-password', credentials);
+    return data;
+  },
+
+  verifyOtp: async (credentials: VerifyOtpCredentials): Promise<{ message: string }> => {
+    const { data } = await api.post<{ message: string }>('/auth/verify-otp', credentials);
+    return data;
+  },
+
+  resetPassword: async (credentials: ResetPasswordCredentials): Promise<{ message: string }> => {
+    const { data } = await api.post<{ message: string }>('/auth/reset-password', credentials);
     return data;
   },
 };

@@ -140,8 +140,8 @@ All logs are prefixed with emojis for easy identification.
 
 Make sure your `.env` file has:
 ```env
-VITE_API_BASE_URL=http://192.168.25.78:3000
-VITE_SOCKET_URL=http://192.168.25.78:5000
+VITE_API_BASE_URL=http://172.16.15.181:3000
+VITE_SOCKET_URL=http://172.16.15.181:5000
 ```
 
 If `VITE_SOCKET_URL` is not set, it will automatically use port 5000 based on your API URL.
